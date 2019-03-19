@@ -3,6 +3,7 @@ BINDIR ?= $(PREFIX)/bin
 MANDIR ?= $(PREFIX)/share/man/man1
 
 install: ${BINDIR}/todo ${MANDIR}/todo.1
+install-man: ${MANDIR}/todo.1
 
 ${BINDIR}/todo:
 	@echo Installing the executable to $(BINDIR)
@@ -22,4 +23,4 @@ uninstall:
 	@echo Removing the manual page from $(MANDIR)
 	@rm -f $(BINDIR)/todo.1
 
-.PHONY: install uninstall
+.PHONY: install install-man uninstall
