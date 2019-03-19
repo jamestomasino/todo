@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # This file defines todo - a minimalist to-do manager.
 
@@ -19,3 +19,63 @@
 
 #-----------------------------------------------------------------------
 
+# help message available via func
+show_help() {
+  cat > /dev/stdout << END
+todo - Command Line Todo List Manager
+
+Creates a text-based todo list and provides basic operations to add and remove elements from the list. If using TMUX, the todo list is session based, using the name of your active session.
+
+usage: todo                                 # display todo list
+usage: todo (--help or -h)                  # show this help
+usage: todo (--add or -a) [activity name]   # add a new activity to list
+usage: todo (--archive)                     # show completed tasks in archive list
+usage: todo (--done or -d) [name or #]      # complete and archive activity
+END
+}
+
+: "${TODO:-${HOME}/todo.txt}"
+# If we are in a tmux session, name the file with the session name
+# If not in tmux, use the full $TODO env var for path/file
+
+if printf "%s" "$TERM" | grep -Fq screen && test "$TMUX" ; then
+  sessname=$(tmux display -p '#S')
+  todopath=$(dirname "$TODO")
+  TODOFILE=$todopath/$sessname".txt"
+  TODOARCHIVEFILE=$todopath/$sessname".archive.txt"
+else
+  TODOFILE=$TODO
+  TODOARCHIVEFILE=${TODO%.*}.archive.txt
+fi
+
+if [ $# -eq 0 ]; then
+  if [ -f "$TODOFILE" ] ; then
+    awk '{ print NR, "-", $0 }' "$TODOFILE" 
+  fi
+else
+  case "$1" in
+    -h|--help)
+      show_help
+      ;;
+    -a|--add)
+      printf "%s" "${*:2}" >> "$TODOFILE"
+      ;;
+    --archive)
+      if [ -f "$TODOARCHIVEFILE" ] ; then
+        cat "$TODOARCHIVEFILE"
+      fi
+      ;;
+    -d|--done)
+      if printf "%s" "$2" | grep -Eq '^[+-]?[0-9]+$'; then
+        match=$(sed -n "/$2/p" "$TODOFILE" 2> /dev/null)
+        sed -i "" -e "/$2/d" "$TODOFILE" 2> /dev/null
+      else
+        match=$(sed -n "$2p" "$TODOFILE" 2> /dev/null)
+        sed -i "" -e "$2d" "$TODOFILE" 2> /dev/null
+      fi
+      if [ ! -z "$match" ]; then
+        printf "%s - %s" "$(date +"%Y-%m-%d %H:%M:%S")" "$match" >> "$TODOARCHIVEFILE"
+      fi
+      ;;
+  esac
+fi
