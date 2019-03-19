@@ -19,25 +19,25 @@
 
 #-----------------------------------------------------------------------
 
-# help message available via func
+version="v.2019.03.18"
+
 show_help() {
   cat > /dev/stdout << END
 todo - Command Line Todo List Manager
 
-Creates a text-based todo list and provides basic operations to add and remove elements from the list. If using TMUX, the todo list is session based, using the name of your active session.
-
-usage: todo                                 # display todo list
-usage: todo (--help or -h)                  # show this help
-usage: todo (--add or -a) [activity name]   # add a new activity to list
-usage: todo (--archive)                     # show completed tasks in archive list
-usage: todo (--done or -d) [name or #]      # complete and archive activity
+OPTIONAL FLAGS:
+  [no flags]                       Show current TODO list
+  -a message                       Add a message to TODO list
+  -d [number] or [string]          Delete message(s) that match parameter
+  -x                               Show archived messages
+  -v                               Show current version number
+  -h                               Show this help
 END
 }
 
-: "${TODO:-${HOME}/todo.txt}"
+TODO="${TODO:-${HOME}/todo.txt}"
 # If we are in a tmux session, name the file with the session name
 # If not in tmux, use the full $TODO env var for path/file
-
 if printf "%s" "$TERM" | grep -Fq screen && test "$TMUX" ; then
   sessname=$(tmux display -p '#S')
   todopath=$(dirname "$TODO")
@@ -48,34 +48,53 @@ else
   TODOARCHIVEFILE=${TODO%.*}.archive.txt
 fi
 
-if [ $# -eq 0 ]; then
-  if [ -f "$TODOFILE" ] ; then
-    awk '{ print NR, "-", $0 }' "$TODOFILE" 
-  fi
-else
+flag_options="hva:d:x"
+if ! parsed=$(getopt -s sh ${flag_options} "$@"); then
+  exit 1
+fi
+eval set -- "${parsed}"
+while true; do
   case "$1" in
-    -h|--help)
+    -h)
       show_help
+      exit 0
       ;;
-    -a|--add)
-      printf "%s" "${*:2}" >> "$TODOFILE"
+    -v)
+      printf "%s\\n" "$version"
+      exit 0
       ;;
-    --archive)
+    -a)
+      shift
+      message="$1"
+      printf "%s\\n" "$message" >> "$TODOFILE"
+      exit 0
+      ;;
+    -x)
       if [ -f "$TODOARCHIVEFILE" ] ; then
         cat "$TODOARCHIVEFILE"
       fi
+      exit 0
       ;;
-    -d|--done)
-      if printf "%s" "$2" | grep -Eq '^[+-]?[0-9]+$'; then
-        match=$(sed -n "/$2/p" "$TODOFILE" 2> /dev/null)
-        sed -i "" -e "/$2/d" "$TODOFILE" 2> /dev/null
-      else
-        match=$(sed -n "$2p" "$TODOFILE" 2> /dev/null)
-        sed -i "" -e "$2d" "$TODOFILE" 2> /dev/null
-      fi
+    -d)
+      shift
+      match=$(sed -n "/$1/p" "$TODOFILE" 2> /dev/null)
+      sed -i '' -e "/$1/d" "$TODOFILE" 2> /dev/null
       if [ ! -z "$match" ]; then
-        printf "%s - %s" "$(date +"%Y-%m-%d %H:%M:%S")" "$match" >> "$TODOARCHIVEFILE"
+        printf "%s - %s\\n" "$(date +"%Y-%m-%d %H:%M:%S")" "$match" >> "$TODOARCHIVEFILE"
       fi
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      exit 1
       ;;
   esac
+  shift
+done
+
+if [ -f "$TODOFILE" ] ; then
+  awk '{ print NR, "-", $0 }' "$TODOFILE" 
 fi
