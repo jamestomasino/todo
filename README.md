@@ -1,4 +1,5 @@
-# todo
+# todo [![Build Status](https://travis-ci.com/jamestomasino/todo.svg?branch=master)](https://travis-ci.com/jamestomasino/todo)
+![GitHub](https://img.shields.io/github/license/jamestomasino/todo.svg)
 
 **todo** is a minimalistic to-do manager for the shell. It supports:
 
