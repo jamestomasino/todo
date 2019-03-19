@@ -29,6 +29,11 @@ allows for unique todo lists based on tmux context.
 The options are as follows:
 
 .TP
+.B "no parameters"
+If no parameters are passed to 
+.B todo,
+then the current todo list will be displayed to standard out.
+.TP
 .B -a " quoted_todo_item"
 Add a new todo list item
 .TP
@@ -57,6 +62,20 @@ Show the help.
 The
 .B todo
 utility exits 0 on success, and >0 if an error occurs.
+
+.SH EXAMPLES
+.TP
+.B todo
+Displays the current todo list
+.TP
+.B todo -a `this is a new todo list item'
+Adds a new item to the current todo list
+.TP
+.B todo -d 3
+Deletes item #3 from the current todo list
+.TP
+.B todo -x
+Shows the archive for the current todo list
 
 .SH BUGS
 Report issues at the git repository at
