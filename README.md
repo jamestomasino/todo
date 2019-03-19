@@ -1,5 +1,4 @@
-todo
-------
+# todo
 
 **todo** is a minimalistic to-do manager for the shell. It supports:
 
@@ -8,7 +7,9 @@ todo
 - command-completion
 - `tmux` session name integration
 
-_Development based on [this BASH function](https://github.com/jamestomasino/dotfiles/blob/master/bash/.functions/todo)_
+See man page for more details.
 
-(in development)
+## License
+
+[GPL3](LICENSE)
 
