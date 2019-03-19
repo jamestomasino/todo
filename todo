@@ -40,9 +40,16 @@ TODO="${TODO:-${HOME}/todo.txt}"
 # If not in tmux, use the full $TODO env var for path/file
 if printf "%s" "$TERM" | grep -Fq screen && test "$TMUX" ; then
   sessname=$(tmux display -p '#S')
-  todopath=$(dirname "$TODO")
-  TODOFILE=$todopath/$sessname".txt"
-  TODOARCHIVEFILE=$todopath/$sessname".archive.txt"
+  # if session name is numeric, it's not descriptive enough
+  # to warrant renaming the todo file. Ignore it and use default
+  if printf "%s" "$sessname" | grep -Eq '^[+-]?[0-9]+$'; then
+    TODOFILE=$TODO
+    TODOARCHIVEFILE=${TODO%.*}.archive.txt
+  else
+    todopath=$(dirname "$TODO")
+    TODOFILE=$todopath/$sessname".txt"
+    TODOARCHIVEFILE=$todopath/$sessname".archive.txt"
+  fi
 else
   TODOFILE=$TODO
   TODOARCHIVEFILE=${TODO%.*}.archive.txt
