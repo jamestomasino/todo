@@ -3,8 +3,12 @@ _todo() {
   TODO="${TODO:-${HOME}/todo.txt}"
   if printf "%s" "$TERM" | grep -Fq screen && test "$TMUX" ; then
     sessname=$(tmux display -p '#S')
-    todopath=$(dirname "$TODO")
-    TODOFILE=$todopath/$sessname".txt"
+    if printf "%s" "$sessname" | grep -Eq '^[+-]?[0-9]+$'; then
+      TODOFILE=$TODO
+    else
+      todopath=$(dirname "$TODO")
+      TODOFILE=$todopath/$sessname".txt"
+    fi
   else
     TODOFILE=$TODO
   fi
