@@ -57,7 +57,7 @@ else
 fi
 
 flag_options="hvea:d:x"
-if ! parsed=$(getopt -s sh ${flag_options} "$@"); then
+if ! parsed=$(getopt ${flag_options} "$@"); then
   exit 1
 fi
 eval set -- "${parsed}"
