@@ -5,13 +5,13 @@ MANDIR ?= $(PREFIX)/share/man/man1
 install: $(BINDIR)/todo $(MANDIR)/todo.1
 install-man: $(MANDIR)/todo.1
 
-$(BINDIR)/todo:
+$(BINDIR)/todo: todo
 	@echo Installing the executable to $(BINDIR)
 	@mkdir -p $(BINDIR)
 	@cp -f todo $(BINDIR)/todo
 	@chmod 755 $(BINDIR)/todo
 
-$(MANDIR)/todo.1:
+$(MANDIR)/todo.1: todo.1
 	@echo Installing the manual page to $(MANDIR)
 	@mkdir -p $(MANDIR)
 	@cp -f todo.1 $(MANDIR)/todo.1
