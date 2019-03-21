@@ -63,32 +63,32 @@ fi
 eval set -- "${parsed}"
 while true; do
   case "$1" in
-    -h)
+    -h) # help
       show_help
       exit 0
       ;;
-    -v)
+    -v) # version
       printf "%s\\n" "$version"
       exit 0
       ;;
-    -e)
+    -e) # edit TODO file
       printf "Opening %s in %s\\n" "$TODOFILE" "${EDITOR:-nano}"
       ${EDITOR:-nano} "${TODOFILE}"
       exit 0
       ;;
-    -a)
+    -a) # add TODO item
       shift
       message="$1"
       printf "%s\\n" "$message" >> "$TODOFILE"
       exit 0
       ;;
-    -x)
+    -x) # view archive
       if [ -f "$TODOARCHIVEFILE" ] ; then
         cat "$TODOARCHIVEFILE"
       fi
       exit 0
       ;;
-    -d)
+    -d) # delete TODO item(s)
       shift
       if printf "%s" "$1" | grep -Eq '^[+-]?[0-9]+$'; then
         match=$(sed -n "${1}p" "$TODOFILE" 2> /dev/null)
@@ -109,13 +109,14 @@ while true; do
       shift
       break
       ;;
-    *)
+    *) # We shouldn't be able to get here. Error
       exit 1
       ;;
   esac
   shift
 done
 
+# When no arguments are passed, we default to showing the TODO file
 if [ -f "$TODOFILE" ] ; then
   awk '{ print NR, "-", $0 }' "$TODOFILE" 
 fi
