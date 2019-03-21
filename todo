@@ -19,7 +19,7 @@
 
 #-----------------------------------------------------------------------
 
-version="v.2019.03.18"
+version="v.2019.03.21"
 
 show_help() {
   cat > /dev/stdout << END
@@ -72,7 +72,7 @@ while true; do
       exit 0
       ;;
     -e)
-      printf "%s\\n" "opening $TODOFILE in $EDITOR"
+      printf "Opening %s in %s\\n" "$TODOFILE" "${EDITOR:-nano}"
       ${EDITOR:-nano} "${TODOFILE}"
       exit 0
       ;;
@@ -92,7 +92,7 @@ while true; do
       shift
       match=$(sed -n "/$1/p" "$TODOFILE" 2> /dev/null)
       sed -i '' -e "/$1/d" "$TODOFILE" 2> /dev/null
-      if [ ! -z "$match" ]; then
+      if [ -n "$match" ]; then
         printf "%s - %s\\n" "$(date +"%Y-%m-%d %H:%M:%S")" "$match" >> "$TODOARCHIVEFILE"
       fi
       exit 0
