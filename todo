@@ -27,6 +27,7 @@ todo - Command Line Todo List Manager
 
 OPTIONAL FLAGS:
   [no flags]                       Show current TODO list
+  -e                               open TODO list in \$EDITOR
   -a message                       Add a message to TODO list
   -d [number] or [string]          Delete message(s) that match parameter
   -x                               Show archived messages
@@ -55,7 +56,7 @@ else
   TODOARCHIVEFILE=${TODO%.*}.archive.txt
 fi
 
-flag_options="hva:d:x"
+flag_options="hvea:d:x"
 if ! parsed=$(getopt -s sh ${flag_options} "$@"); then
   exit 1
 fi
@@ -68,6 +69,11 @@ while true; do
       ;;
     -v)
       printf "%s\\n" "$version"
+      exit 0
+      ;;
+    -e)
+      printf "%s\\n" "opening $TODOFILE in $EDITOR"
+      ${EDITOR:-nano} "${TODOFILE}"
       exit 0
       ;;
     -a)
