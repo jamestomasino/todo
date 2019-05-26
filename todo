@@ -19,7 +19,7 @@
 
 #-----------------------------------------------------------------------
 
-version="v.2019.03.21"
+version="v.2019.05.26"
 
 show_help() {
   cat > /dev/stdout << END
@@ -56,64 +56,49 @@ else
   TODOARCHIVEFILE=${TODO%.*}.archive.txt
 fi
 
-flag_options="hvea:d:x"
-if ! parsed=$(getopt ${flag_options} "$@"); then
-  exit 1
-fi
-eval set -- "${parsed}"
-while true; do
-  case "$1" in
-    -h) # help
+while getopts "hvea:d:x" arg; do
+  case "$arg" in
+    h) # help
       show_help
       exit 0
       ;;
-    -v) # version
+    v) # version
       printf "%s\\n" "$version"
       exit 0
       ;;
-    -e) # edit TODO file
+    e) # edit TODO file
       printf "Opening %s in %s\\n" "$TODOFILE" "${EDITOR:-nano}"
       ${EDITOR:-nano} "${TODOFILE}"
       exit 0
       ;;
-    -a) # add TODO item
-      shift
-      message="$1"
+    a) # add TODO item
+      message="$OPTARG"
       printf "%s\\n" "$message" >> "$TODOFILE"
       exit 0
       ;;
-    -x) # view archive
+    x) # view archive
       if [ -f "$TODOARCHIVEFILE" ] ; then
         cat "$TODOARCHIVEFILE"
       fi
       exit 0
       ;;
-    -d) # delete TODO item(s)
-      shift
-      if printf "%s" "$1" | grep -Eq '^[+-]?[0-9]+$'; then
-        match=$(sed -n "${1}p" "$TODOFILE" 2> /dev/null)
-        sed -i '' -e "${1}d" "$TODOFILE" 2> /dev/null
+    d) # delete TODO item(s)
+      if printf "%s" "$OPTARG" | grep -Eq '^[+-]?[0-9]+$'; then
+        match=$(sed -n "${OPTARG}p" "$TODOFILE" 2> /dev/null)
+        sed -i '' -e "${OPTARG}d" "$TODOFILE" 2> /dev/null
         if [ -n "$match" ]; then
           printf "%s - %s\\n" "$(date +"%Y-%m-%d %H:%M:%S")" "$match" >> "$TODOARCHIVEFILE"
         fi
       else
-        match=$(sed -n "/$1/p" "$TODOFILE" 2> /dev/null)
-        sed -i '' -e "/$1/d" "$TODOFILE" 2> /dev/null
+        match=$(sed -n "/$OPTARG/p" "$TODOFILE" 2> /dev/null)
+        sed -i '' -e "/$OPTARG/d" "$TODOFILE" 2> /dev/null
         if [ -n "$match" ]; then
           printf "%s - %s\\n" "$(date +"%Y-%m-%d %H:%M:%S")" "$match" >> "$TODOARCHIVEFILE"
         fi
       fi
       exit 0
       ;;
-    --)
-      shift
-      break
-      ;;
-    *) # We shouldn't be able to get here. Error
-      exit 1
-      ;;
   esac
-  shift
 done
 
 # When no arguments are passed, we default to showing the TODO file
