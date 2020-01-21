@@ -2,7 +2,7 @@
 
 # This file defines todo - a minimalist to-do manager.
 
-# Copyright (C) 2018 tomasino@sdf.org
+# Copyright (C) 2020 James Tomasino
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 
 #-----------------------------------------------------------------------
 
-version="v.2019.05.26"
+version="v.2020.01.21"
 
 show_help() {
   cat > /dev/stdout << END
@@ -37,6 +37,7 @@ END
 }
 
 TODO="${TODO:-${HOME}/todo.txt}"
+
 # If we are in a tmux session, name the file with the session name
 # If not in tmux, use the full $TODO env var for path/file
 if printf "%s" "$TERM" | grep -Fq screen && test "$TMUX" ; then
@@ -66,13 +67,14 @@ while getopts "hvea:d:x" arg; do
       printf "%s\\n" "$version"
       exit 0
       ;;
-    e) # edit TODO file
+    e) # edit file
       printf "Opening %s in %s\\n" "$TODOFILE" "${EDITOR:-nano}"
       ${EDITOR:-nano} "${TODOFILE}"
       exit 0
       ;;
-    a) # add TODO item
-      message="$OPTARG"
+    a) # add item
+      shift
+      message="$*"
       printf "%s\\n" "$message" >> "$TODOFILE"
       exit 0
       ;;
@@ -82,16 +84,16 @@ while getopts "hvea:d:x" arg; do
       fi
       exit 0
       ;;
-    d) # delete TODO item(s)
+    d) # delete item(s) matching pattern
       if printf "%s" "$OPTARG" | grep -Eq '^[+-]?[0-9]+$'; then
         match=$(sed -n "${OPTARG}p" "$TODOFILE" 2> /dev/null)
-        sed -i '' -e "${OPTARG}d" "$TODOFILE" 2> /dev/null
+        sed -i.bak -e "${OPTARG}d" "$TODOFILE" 2> /dev/null && rm "$TODOFILE".bak
         if [ -n "$match" ]; then
           printf "%s - %s\\n" "$(date +"%Y-%m-%d %H:%M:%S")" "$match" >> "$TODOARCHIVEFILE"
         fi
       else
         match=$(sed -n "/$OPTARG/p" "$TODOFILE" 2> /dev/null)
-        sed -i '' -e "/$OPTARG/d" "$TODOFILE" 2> /dev/null
+        sed -i.bak -e "/$OPTARG/d" "$TODOFILE" 2> /dev/null && rm "$TODOFILE".bak
         if [ -n "$match" ]; then
           printf "%s - %s\\n" "$(date +"%Y-%m-%d %H:%M:%S")" "$match" >> "$TODOARCHIVEFILE"
         fi
@@ -101,7 +103,7 @@ while getopts "hvea:d:x" arg; do
   esac
 done
 
-# When no arguments are passed, we default to showing the TODO file
+# When no arguments are passed, we default to showing the file
 if [ -f "$TODOFILE" ] ; then
   awk '{ print NR, "-", $0 }' "$TODOFILE" 
 fi
