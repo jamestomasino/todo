@@ -100,6 +100,8 @@ while getopts "hvea:d:x" arg; do
       fi
       exit 0
       ;;
+    *)
+      exit 1
   esac
 done
 
