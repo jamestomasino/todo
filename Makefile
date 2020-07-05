@@ -1,26 +1,29 @@
-PREFIX ?= /usr/local
-BINDIR ?= $(PREFIX)/bin
-MANDIR ?= $(PREFIX)/share/man/man1
+# Install to /usr/local unless otherwise specified, such as `make PREFIX=/app`
+PREFIX?=/usr/local
 
-install: $(BINDIR)/todo $(MANDIR)/todo.1
-install-man: $(MANDIR)/todo.1
+# What to run to install various files
+INSTALL?=install
+# Run to install the actual binary
+INSTALL_PROGRAM=$(INSTALL) -Dm 755
+# Run to install application data, with differing permissions
+INSTALL_DATA=$(INSTALL) -Dm 644
 
-$(BINDIR)/todo: todo
-	@echo Installing the executable to $(BINDIR)
-	@mkdir -p $(BINDIR)
-	@cp -f todo $(BINDIR)/todo
-	@chmod 755 $(BINDIR)/todo
+# Directories into which to install the various files
+bindir=$(DESTDIR)$(PREFIX)/bin
+sharedir=$(DESTDIR)$(PREFIX)/share
 
-$(MANDIR)/todo.1: todo.1
-	@echo Installing the manual page to $(MANDIR)
-	@mkdir -p $(MANDIR)
-	@cp -f todo.1 $(MANDIR)/todo.1
-	@chmod 644 $(MANDIR)/todo.1
+help:
+	@echo "targets:"
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
+	| sed -n 's/^\(.*\): \(.*\)##\(.*\)/  \1|\3/p' \
+	| column -t  -s '|'
 
-uninstall:
-	@echo Removing the executable from $(BINDIR)
-	@rm -f $(BINDIR)/todo
-	@echo Removing the manual page from $(MANDIR)
-	@rm -f $(MANDIR)/todo.1
+install: todo todo.1 ## system install
+	$(INSTALL_PROGRAM) todo $(bindir)/todo
+	$(INSTALL_DATA) todo.1 $(sharedir)/man/man1/todo.1
 
-.PHONY: install install-man uninstall
+uninstall: ## system uninstall
+	rm -f $(bindir)/todo
+	rm -f $(sharedir)/man/man1/todo.1
+
+.PHONY: install uninstall
