@@ -26,4 +26,7 @@ uninstall: ## system uninstall
 	rm -f $(bindir)/todo
 	rm -f $(sharedir)/man/man1/todo.1
 
-.PHONY: install uninstall
+README.txt: todo.1 ## generate readme file
+	man ./todo.1 | col -bx > README.txt
+
+.PHONY: help install uninstall

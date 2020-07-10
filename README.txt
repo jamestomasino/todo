@@ -1,4 +1,3 @@
-```
 TODO(1)                           General Commands Manual                          TODO(1)
 
 NAME
@@ -59,11 +58,15 @@ EXAMPLES
        todo -x
               Shows the archive for the current todo list
 
+LICENSE
+       GNU General Public License v3.0 or later at
+
+       https://www.gnu.org/licenses/gpl-3.0-standalone.html
+
 BUGS
        Report issues at the git repository at https://github.com/jamestomasino/todo
 
 AUTHOR
        James Tomasino <james (at) tomasino (dot) org>
 
-v2020.01.21                           21 January 2020                              TODO(1)
-```
+2020.07.10                             10 July 2020                                TODO(1)
