@@ -14,19 +14,19 @@ sharedir=$(DESTDIR)$(PREFIX)/share
 
 help:
 	@echo "targets:"
-	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
-	| sed -n 's/^\(.*\): \(.*\)##\(.*\)/  \1|\3/p' \
+	@awk -F '#' '/^[a-zA-Z0-9_-\.]+:.*?#/ { print $0 }' $(MAKEFILE_LIST) \
+	| sed -n 's/^\(.*\): \(.*\)#\(.*\)/  \1|-\3/p' \
 	| column -t  -s '|'
 
-install: todo todo.1 ## system install
+install: todo todo.1 # system install
 	$(INSTALL_PROGRAM) todo $(bindir)/todo
 	$(INSTALL_DATA) todo.1 $(sharedir)/man/man1/todo.1
 
-uninstall: ## system uninstall
+uninstall: # system uninstall
 	rm -f $(bindir)/todo
 	rm -f $(sharedir)/man/man1/todo.1
 
-README.txt: todo.1 ## generate readme file
+README.txt: todo.1 # generate readme file
 	man ./todo.1 | col -bx > README.txt
 
 .PHONY: help install uninstall
