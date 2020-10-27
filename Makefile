@@ -27,6 +27,6 @@ uninstall: # system uninstall
 	rm -f $(sharedir)/man/man1/todo.1
 
 README.txt: todo.1 # generate readme file
-	man ./todo.1 | col -bx > README.txt
+	MANWIDTH=80 man ./todo.1 | col -bx > README.txt
 
 .PHONY: help install uninstall
