@@ -5,7 +5,7 @@ todo \- a minimalist todo list manager
 
 .SH SYNOPSIS
 .B todo
-[-vhex] [-a "todo item"] [-d todo-number] [-d "todo phrase"]
+[--json] [-jvhexu] [-a "todo item"] [-d todo-number] [-d "todo phrase"]
 .P
 
 .SH DESCRIPTION
@@ -13,6 +13,14 @@ todo \- a minimalist todo list manager
 is a simple, minimalist todo list manager. Users can
 add items to a todo list or delete them. Deleted items
 are archived and can be reviewed.
+.PP
+Displayed output is automatically sorted by priority and
+then by insertion order. Any todo item whose first token
+is
+.B P1
+through
+.B P9
+is treated as prioritized, with lower numbers shown first.
 .PP
 The default location of the todo list can be set with
 the
@@ -41,12 +49,21 @@ Delete a todo list item by its number or by a string.
 If a string is provided, any todo list item that matches
 that string will be removed. Deleted items are moved
 to the archive.
+.TP
+.B -u
+Restore the most recent archived todo item back into the
+current todo list.
 .PP
 The archive file is named identically to the todo file
 with the exception of a
 .B .archive
 added before the extension. For example, todo.txt would
 have an archive named todo.archive.txt in the same folder.
+.TP
+.B "-j, --json"
+Display list output as JSON. This applies to both the
+current todo list and archive view
+.RB ( -x ).
 .TP
 .B -e
 Open the todo file in your editor.
@@ -63,7 +80,7 @@ Show the help.
 .SH EXIT STATUS
 The
 .B todo
-utility exits 0 on success. Some operational errors may still return 0.
+utility exits 0 on success, and >0 if an error occurs.
 
 .SH EXAMPLES
 .TP
@@ -73,8 +90,17 @@ Displays the current todo list
 todo -a "this is a new todo list item"
 Adds a new item to the current todo list
 .TP
+.B todo -a "P1 file taxes"
+Adds a prioritized todo item
+.TP
 .B todo -d 3
 Deletes item #3 from the current todo list
+.TP
+.B todo -u
+Restores the most recently archived todo item
+.TP
+.B todo -j
+Displays the current todo list as JSON
 .TP
 .B todo -x
 Shows the archive for the current todo list

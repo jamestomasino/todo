@@ -30,6 +30,8 @@ OPTIONAL FLAGS:
   -e                               open TODO list in \$EDITOR
   -a message                       Add a message to TODO list
   -d [number] or [string]          Delete message(s) that match parameter
+  -u                               Restore most recent archived message
+  -j / --json                      Show list output in JSON
   -x                               Show archived messages
   -v                               Show current version number
   -h                               Show this help
@@ -37,6 +39,79 @@ END
 }
 
 TODO="${TODO:-${HOME}/todo.txt}"
+JSON_OUTPUT=0
+
+if [ "${1:-}" = "--json" ]; then
+  JSON_OUTPUT=1
+  shift
+fi
+
+archive_lines() {
+  archive_file=$1
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    printf "%s - %s\\n" "$(date +"%Y-%m-%d %H:%M:%S")" "$line" >> "$archive_file"
+  done
+}
+
+sorted_lines() {
+  input_file=$1
+  awk '
+    {
+      pri = 99999
+      if ($0 ~ /^P[1-9][[:space:]]+/) {
+        tmp = $0
+        sub(/^P/, "", tmp)
+        sub(/[[:space:]].*$/, "", tmp)
+        pri = tmp + 0
+      }
+      printf "%05d|%09d|%s\n", pri, NR, $0
+    }
+  ' "$input_file" | sort -t'|' -k1,1n -k2,2n | cut -d'|' -f3-
+}
+
+json_from_stream() {
+  awk '
+    BEGIN {
+      first = 1
+      print "["
+    }
+    {
+      s = $0
+      gsub(/\\/, "\\\\", s)
+      gsub(/"/, "\\\"", s)
+      gsub(/\t/, "\\t", s)
+      gsub(/\r/, "\\r", s)
+      if (!first) {
+        printf ",\n"
+      }
+      printf "  {\"id\": %d, \"text\": \"%s\"}", NR, s
+      first = 0
+    }
+    END {
+      if (!first) {
+        printf "\n"
+      }
+      print "]"
+    }
+  '
+}
+
+show_file() {
+  input_file=$1
+  if [ ! -f "$input_file" ]; then
+    if [ "$JSON_OUTPUT" -eq 1 ]; then
+      printf "[]\n"
+    fi
+    return 0
+  fi
+
+  if [ "$JSON_OUTPUT" -eq 1 ]; then
+    sorted_lines "$input_file" | json_from_stream
+  else
+    sorted_lines "$input_file" | awk '{ print NR, "-", $0 }'
+  fi
+}
 
 # If we are in a tmux session, name the file with the session name
 # If not in tmux, use the full $TODO env var for path/file
@@ -57,7 +132,7 @@ else
   TODOARCHIVEFILE=${TODO%.*}.archive.txt
 fi
 
-while getopts "hvea:d:x" arg; do
+while getopts "hvea:d:xuj" arg; do
   case "$arg" in
     h) # help
       show_help
@@ -67,53 +142,104 @@ while getopts "hvea:d:x" arg; do
       printf "%s\\n" "$version"
       exit 0
       ;;
+    j) # json output mode
+      JSON_OUTPUT=1
+      ;;
     e) # edit file
       printf "Opening %s in %s\\n" "$TODOFILE" "${EDITOR:-nano}"
-      ${EDITOR:-nano} "${TODOFILE}"
-      exit 0
+      if ${EDITOR:-nano} "${TODOFILE}"; then
+        exit 0
+      fi
+      exit 1
       ;;
     a) # add item
-      shift
-      message="$*"
-      printf "%s\\n" "$message" >> "$TODOFILE"
-      exit 0
+      message="$OPTARG"
+      if [ -z "$message" ]; then
+        exit 1
+      fi
+      if printf "%s\\n" "$message" >> "$TODOFILE"; then
+        exit 0
+      fi
+      exit 1
       ;;
     x) # view archive
-      if [ -f "$TODOARCHIVEFILE" ] ; then
-        cat "$TODOARCHIVEFILE"
-      fi
+      show_file "$TODOARCHIVEFILE"
       exit 0
+      ;;
+    u) # undo most recent archived entry back into todo list
+      if [ ! -s "$TODOARCHIVEFILE" ]; then
+        exit 1
+      fi
+      last_entry=$(tail -n 1 "$TODOARCHIVEFILE" 2> /dev/null) || exit 1
+      restored=${last_entry#* - }
+      if ! printf "%s\\n" "$restored" >> "$TODOFILE"; then
+        exit 1
+      fi
+      todopath=$(dirname "$TODOARCHIVEFILE")
+      tmp_archive=$(mktemp "$todopath/.todo.archive.tmp.XXXXXX") || exit 1
+      if sed '$d' "$TODOARCHIVEFILE" > "$tmp_archive" && mv "$tmp_archive" "$TODOARCHIVEFILE"; then
+        exit 0
+      fi
+      rm -f "$tmp_archive"
+      exit 1
       ;;
     d) # delete item(s) matching pattern
-      if printf "%s" "$OPTARG" | grep -Eq '^[+-]?[0-9]+$'; then
+      if [ ! -f "$TODOFILE" ]; then
+        exit 1
+      fi
+
+      if printf "%s" "$OPTARG" | grep -Eq '^[+-][0-9]+$'; then
+        exit 1
+      fi
+
+      if printf "%s" "$OPTARG" | grep -Eq '^[0-9]+$'; then
+        if [ "$OPTARG" -eq 0 ]; then
+          exit 1
+        fi
         match=$(sed -n "${OPTARG}p" "$TODOFILE" 2> /dev/null)
-        sed -i.bak -e "${OPTARG}d" "$TODOFILE" 2> /dev/null && rm "$TODOFILE".bak
+        if sed -i.bak -e "${OPTARG}d" "$TODOFILE" 2> /dev/null; then
+          rm -f "$TODOFILE".bak
+        else
+          exit 1
+        fi
         if [ -n "$match" ]; then
-          printf "%s - %s\\n" "$(date +"%Y-%m-%d %H:%M:%S")" "$match" >> "$TODOARCHIVEFILE"
+          printf "%s\\n" "$match" | archive_lines "$TODOARCHIVEFILE"
         fi
       else
-        # Treat OPTARG as a literal string to avoid sed regex/escape pitfalls.
-        match=$(grep -F "$OPTARG" "$TODOFILE" 2> /dev/null)
-        if [ -n "$match" ]; then
-          # Delete matched lines by number from bottom to top so indexes stay stable.
-          line_numbers=$(awk -v needle="$OPTARG" 'index($0, needle) { print NR }' "$TODOFILE" 2> /dev/null)
-          if [ -n "$line_numbers" ]; then
-            for line in $(printf "%s\n" "$line_numbers" | awk '{print $0}' | sort -rn); do
-              sed -i.bak -e "${line}d" "$TODOFILE" 2> /dev/null
-            done
-            rm -f "$TODOFILE".bak
+        # Treat OPTARG as a literal string and rewrite in one pass.
+        todopath=$(dirname "$TODOFILE")
+        tmp_todo=$(mktemp "$todopath/.todo.tmp.XXXXXX") || exit 1
+        tmp_match=$(mktemp "$todopath/.todo.match.tmp.XXXXXX") || { rm -f "$tmp_todo"; exit 1; }
+
+        if awk -v needle="$OPTARG" '
+            index($0, needle) { print > match_file; found=1; next }
+            { print > out_file }
+            END { if (found) exit 0; else exit 2 }
+          ' out_file="$tmp_todo" match_file="$tmp_match" "$TODOFILE"; then
+          if mv "$tmp_todo" "$TODOFILE"; then
+            archive_lines "$TODOARCHIVEFILE" < "$tmp_match"
+          else
+            rm -f "$tmp_todo" "$tmp_match"
+            exit 1
           fi
-          printf "%s - %s\\n" "$(date +"%Y-%m-%d %H:%M:%S")" "$match" >> "$TODOARCHIVEFILE"
+        else
+          rc=$?
+          rm -f "$tmp_todo"
+          if [ "$rc" -ne 2 ]; then
+            rm -f "$tmp_match"
+            exit 1
+          fi
         fi
+        rm -f "$tmp_match"
       fi
       exit 0
       ;;
-    *)
+    ?) # unknown option
       exit 1
+      ;;
   esac
 done
 
-# When no arguments are passed, we default to showing the file
-if [ -f "$TODOFILE" ] ; then
-  awk '{ print NR, "-", $0 }' "$TODOFILE" 
-fi
+# When no action arguments are passed, default to showing the file.
+show_file "$TODOFILE"
+exit 0
