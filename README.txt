@@ -35,7 +35,8 @@ DESCRIPTION
        -d item_number_or_phrase
               Delete  a  todo  list  item  by its number or by a string.  If a
               string is provided, any todo list item that matches that  string
-              will be removed. Deleted items are moved to the archive.
+              will be removed. Deleted items are moved to the archive when op‐
+              erating on the main todo list.
 
        -u     Restore the most recent archived todo item back into the current
               todo list.
@@ -44,13 +45,15 @@ DESCRIPTION
        tion of a .archive added before the extension.  For  example,  todo.txt
        would have an archive named todo.archive.txt in the same folder.
 
+       -x     Use  archive  context.  With no additional action, todo -x shows
+              the archive list. With other actions, operations  apply  to  the
+              archive file instead of the main todo file.
+
        -j, --json
               Display  list  output  as JSON. This applies to both the current
               todo list and archive view (-x).
 
        -e     Open the todo file in your editor.
-
-       -x     Display the archive file.
 
        -v     Display current version information.
 
@@ -73,6 +76,12 @@ EXAMPLES
 
        todo -u
               Restores the most recently archived todo item
+
+       todo -xe
+              Opens the archive file in your editor
+
+       todo -xd 3
+              Deletes item #3 from the archive file
 
        todo -j
               Displays the current todo list as JSON

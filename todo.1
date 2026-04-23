@@ -48,7 +48,7 @@ Add a new todo list item
 Delete a todo list item by its number or by a string.
 If a string is provided, any todo list item that matches
 that string will be removed. Deleted items are moved
-to the archive.
+to the archive when operating on the main todo list.
 .TP
 .B -u
 Restore the most recent archived todo item back into the
@@ -60,6 +60,12 @@ with the exception of a
 added before the extension. For example, todo.txt would
 have an archive named todo.archive.txt in the same folder.
 .TP
+.B -x
+Use archive context. With no additional action,
+.B todo -x
+shows the archive list. With other actions, operations
+apply to the archive file instead of the main todo file.
+.TP
 .B "-j, --json"
 Display list output as JSON. This applies to both the
 current todo list and archive view
@@ -67,9 +73,6 @@ current todo list and archive view
 .TP
 .B -e
 Open the todo file in your editor.
-.TP
-.B -x
-Display the archive file.
 .TP
 .B -v
 Display current version information.
@@ -98,6 +101,12 @@ Deletes item #3 from the current todo list
 .TP
 .B todo -u
 Restores the most recently archived todo item
+.TP
+.B todo -xe
+Opens the archive file in your editor
+.TP
+.B todo -xd 3
+Deletes item #3 from the archive file
 .TP
 .B todo -j
 Displays the current todo list as JSON

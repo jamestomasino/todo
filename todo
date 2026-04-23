@@ -32,7 +32,7 @@ OPTIONAL FLAGS:
   -d [number] or [string]          Delete message(s) that match parameter
   -u                               Restore most recent archived message
   -j / --json                      Show list output in JSON
-  -x                               Show archived messages
+  -x                               Use archive context for list/edit/add/delete
   -v                               Show current version number
   -h                               Show this help
 END
@@ -113,6 +113,76 @@ show_file() {
   fi
 }
 
+set_action() {
+  next_action=$1
+  next_arg=$2
+  if [ "$ACTION_SET" -eq 1 ]; then
+    exit 1
+  fi
+  ACTION=$next_action
+  ACTION_ARG=$next_arg
+  ACTION_SET=1
+}
+
+delete_from_file() {
+  target_file=$1
+  delete_arg=$2
+  should_archive=$3
+
+  if [ ! -f "$target_file" ]; then
+    return 1
+  fi
+
+  if printf "%s" "$delete_arg" | grep -Eq '^[+-][0-9]+$'; then
+    return 1
+  fi
+
+  if printf "%s" "$delete_arg" | grep -Eq '^[0-9]+$'; then
+    if [ "$delete_arg" -eq 0 ]; then
+      return 1
+    fi
+    match=$(sed -n "${delete_arg}p" "$target_file" 2> /dev/null)
+    if sed -i.bak -e "${delete_arg}d" "$target_file" 2> /dev/null; then
+      rm -f "$target_file".bak
+    else
+      return 1
+    fi
+    if [ "$should_archive" -eq 1 ] && [ -n "$match" ]; then
+      printf "%s\\n" "$match" | archive_lines "$TODOARCHIVEFILE"
+    fi
+    return 0
+  fi
+
+  targetpath=$(dirname "$target_file")
+  tmp_target=$(mktemp "$targetpath/.todo.tmp.XXXXXX") || return 1
+  tmp_match=$(mktemp "$targetpath/.todo.match.tmp.XXXXXX") || { rm -f "$tmp_target"; return 1; }
+
+  if awk -v needle="$delete_arg" '
+      index($0, needle) { print > match_file; found=1; next }
+      { print > out_file }
+      END { if (found) exit 0; else exit 2 }
+    ' out_file="$tmp_target" match_file="$tmp_match" "$target_file"; then
+    if mv "$tmp_target" "$target_file"; then
+      if [ "$should_archive" -eq 1 ]; then
+        archive_lines "$TODOARCHIVEFILE" < "$tmp_match"
+      fi
+    else
+      rm -f "$tmp_target" "$tmp_match"
+      return 1
+    fi
+  else
+    rc=$?
+    rm -f "$tmp_target"
+    if [ "$rc" -ne 2 ]; then
+      rm -f "$tmp_match"
+      return 1
+    fi
+  fi
+
+  rm -f "$tmp_match"
+  return 0
+}
+
 # If we are in a tmux session, name the file with the session name
 # If not in tmux, use the full $TODO env var for path/file
 if printf "%s" "$TERM" | grep -Fq screen && test "$TMUX" ; then
@@ -132,107 +202,36 @@ else
   TODOARCHIVEFILE=${TODO%.*}.archive.txt
 fi
 
+ACTION="list"
+ACTION_ARG=""
+ACTION_SET=0
+ARCHIVE_CONTEXT=0
+
 while getopts "hvea:d:xuj" arg; do
   case "$arg" in
     h) # help
-      show_help
-      exit 0
+      set_action "help" ""
       ;;
     v) # version
-      printf "%s\\n" "$version"
-      exit 0
+      set_action "version" ""
       ;;
     j) # json output mode
       JSON_OUTPUT=1
       ;;
     e) # edit file
-      printf "Opening %s in %s\\n" "$TODOFILE" "${EDITOR:-nano}"
-      if ${EDITOR:-nano} "${TODOFILE}"; then
-        exit 0
-      fi
-      exit 1
+      set_action "edit" ""
       ;;
     a) # add item
-      message="$OPTARG"
-      if [ -z "$message" ]; then
-        exit 1
-      fi
-      if printf "%s\\n" "$message" >> "$TODOFILE"; then
-        exit 0
-      fi
-      exit 1
+      set_action "add" "$OPTARG"
       ;;
     x) # view archive
-      show_file "$TODOARCHIVEFILE"
-      exit 0
+      ARCHIVE_CONTEXT=1
       ;;
     u) # undo most recent archived entry back into todo list
-      if [ ! -s "$TODOARCHIVEFILE" ]; then
-        exit 1
-      fi
-      last_entry=$(tail -n 1 "$TODOARCHIVEFILE" 2> /dev/null) || exit 1
-      restored=${last_entry#* - }
-      if ! printf "%s\\n" "$restored" >> "$TODOFILE"; then
-        exit 1
-      fi
-      todopath=$(dirname "$TODOARCHIVEFILE")
-      tmp_archive=$(mktemp "$todopath/.todo.archive.tmp.XXXXXX") || exit 1
-      if sed '$d' "$TODOARCHIVEFILE" > "$tmp_archive" && mv "$tmp_archive" "$TODOARCHIVEFILE"; then
-        exit 0
-      fi
-      rm -f "$tmp_archive"
-      exit 1
+      set_action "undo" ""
       ;;
     d) # delete item(s) matching pattern
-      if [ ! -f "$TODOFILE" ]; then
-        exit 1
-      fi
-
-      if printf "%s" "$OPTARG" | grep -Eq '^[+-][0-9]+$'; then
-        exit 1
-      fi
-
-      if printf "%s" "$OPTARG" | grep -Eq '^[0-9]+$'; then
-        if [ "$OPTARG" -eq 0 ]; then
-          exit 1
-        fi
-        match=$(sed -n "${OPTARG}p" "$TODOFILE" 2> /dev/null)
-        if sed -i.bak -e "${OPTARG}d" "$TODOFILE" 2> /dev/null; then
-          rm -f "$TODOFILE".bak
-        else
-          exit 1
-        fi
-        if [ -n "$match" ]; then
-          printf "%s\\n" "$match" | archive_lines "$TODOARCHIVEFILE"
-        fi
-      else
-        # Treat OPTARG as a literal string and rewrite in one pass.
-        todopath=$(dirname "$TODOFILE")
-        tmp_todo=$(mktemp "$todopath/.todo.tmp.XXXXXX") || exit 1
-        tmp_match=$(mktemp "$todopath/.todo.match.tmp.XXXXXX") || { rm -f "$tmp_todo"; exit 1; }
-
-        if awk -v needle="$OPTARG" '
-            index($0, needle) { print > match_file; found=1; next }
-            { print > out_file }
-            END { if (found) exit 0; else exit 2 }
-          ' out_file="$tmp_todo" match_file="$tmp_match" "$TODOFILE"; then
-          if mv "$tmp_todo" "$TODOFILE"; then
-            archive_lines "$TODOARCHIVEFILE" < "$tmp_match"
-          else
-            rm -f "$tmp_todo" "$tmp_match"
-            exit 1
-          fi
-        else
-          rc=$?
-          rm -f "$tmp_todo"
-          if [ "$rc" -ne 2 ]; then
-            rm -f "$tmp_match"
-            exit 1
-          fi
-        fi
-        rm -f "$tmp_match"
-      fi
-      exit 0
+      set_action "delete" "$OPTARG"
       ;;
     ?) # unknown option
       exit 1
@@ -240,6 +239,87 @@ while getopts "hvea:d:xuj" arg; do
   esac
 done
 
-# When no action arguments are passed, default to showing the file.
-show_file "$TODOFILE"
-exit 0
+shift "$((OPTIND - 1))"
+if [ "$ACTION" = "add" ] && [ "$#" -gt 0 ]; then
+  if [ -n "$ACTION_ARG" ]; then
+    ACTION_ARG="$ACTION_ARG $*"
+  else
+    ACTION_ARG="$*"
+  fi
+  set --
+fi
+if [ "$ACTION" = "delete" ] && [ "$#" -gt 0 ]; then
+  if [ -n "$ACTION_ARG" ]; then
+    ACTION_ARG="$ACTION_ARG $*"
+  else
+    ACTION_ARG="$*"
+  fi
+  set --
+fi
+if [ "$#" -gt 0 ]; then
+  exit 1
+fi
+
+if [ "$ARCHIVE_CONTEXT" -eq 1 ]; then
+  ACTIVEFILE=$TODOARCHIVEFILE
+else
+  ACTIVEFILE=$TODOFILE
+fi
+
+case "$ACTION" in
+  help)
+    show_help
+    exit 0
+    ;;
+  version)
+    printf "%s\\n" "$version"
+    exit 0
+    ;;
+  edit)
+    printf "Opening %s in %s\\n" "$ACTIVEFILE" "${EDITOR:-nano}"
+    if ${EDITOR:-nano} "${ACTIVEFILE}"; then
+      exit 0
+    fi
+    exit 1
+    ;;
+  add)
+    if [ -z "$ACTION_ARG" ]; then
+      exit 1
+    fi
+    if printf "%s\\n" "$ACTION_ARG" >> "$ACTIVEFILE"; then
+      exit 0
+    fi
+    exit 1
+    ;;
+  delete)
+    if [ "$ARCHIVE_CONTEXT" -eq 1 ]; then
+      delete_from_file "$ACTIVEFILE" "$ACTION_ARG" 0 && exit 0
+      exit 1
+    fi
+    delete_from_file "$ACTIVEFILE" "$ACTION_ARG" 1 && exit 0
+    exit 1
+    ;;
+  undo)
+    if [ ! -s "$TODOARCHIVEFILE" ]; then
+      exit 1
+    fi
+    last_entry=$(tail -n 1 "$TODOARCHIVEFILE" 2> /dev/null) || exit 1
+    restored=${last_entry#* - }
+    if ! printf "%s\\n" "$restored" >> "$TODOFILE"; then
+      exit 1
+    fi
+    todopath=$(dirname "$TODOARCHIVEFILE")
+    tmp_archive=$(mktemp "$todopath/.todo.archive.tmp.XXXXXX") || exit 1
+    if sed '$d' "$TODOARCHIVEFILE" > "$tmp_archive" && mv "$tmp_archive" "$TODOARCHIVEFILE"; then
+      exit 0
+    fi
+    rm -f "$tmp_archive"
+    exit 1
+    ;;
+  list)
+    show_file "$ACTIVEFILE"
+    exit 0
+    ;;
+esac
+
+exit 1
