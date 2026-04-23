@@ -2,7 +2,7 @@
 
 Summary: A minimalist todo list manager
 Name: todo
-Version: 2020.07.10
+Version: 2026.04.23
 Release: 1%{?dist}
 License: GPL
 Group: Applications/Productivity
@@ -39,5 +39,10 @@ rm -rf %{buildroot}
 %{_mandir}/man1/todo.1*
 
 %changelog
+* Thu Apr 23 2026 James Tomasino <james@tomasino.org> 2026.04.23-1
+- Update to 2026.04.23
+- Improve tmux fallback behavior when session lookup fails
+- Fix literal string deletion for values containing '/'
+- Improve Makefile install portability across Linux/BSD/macOS
 * Fri Jul 10 2020 Andrew Williams <andy@tensixtyone.com> 2020-07.10-1
 - Initial RPM package

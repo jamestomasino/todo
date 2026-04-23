@@ -19,7 +19,7 @@
 
 #-----------------------------------------------------------------------
 
-version="2020.07.10"
+version="2026.04.23"
 
 show_help() {
   cat > /dev/stdout << END
@@ -41,10 +41,10 @@ TODO="${TODO:-${HOME}/todo.txt}"
 # If we are in a tmux session, name the file with the session name
 # If not in tmux, use the full $TODO env var for path/file
 if printf "%s" "$TERM" | grep -Fq screen && test "$TMUX" ; then
-  sessname=$(tmux display -p '#S')
+  sessname=$(tmux display -p '#S' 2> /dev/null)
   # if session name is numeric, it's not descriptive enough
   # to warrant renaming the todo file. Ignore it and use default
-  if printf "%s" "$sessname" | grep -Eq '^[+-]?[0-9]+$'; then
+  if [ -z "$sessname" ] || printf "%s" "$sessname" | grep -Eq '^[+-]?[0-9]+$'; then
     TODOFILE=$TODO
     TODOARCHIVEFILE=${TODO%.*}.archive.txt
   else
@@ -92,9 +92,17 @@ while getopts "hvea:d:x" arg; do
           printf "%s - %s\\n" "$(date +"%Y-%m-%d %H:%M:%S")" "$match" >> "$TODOARCHIVEFILE"
         fi
       else
-        match=$(sed -n "/$OPTARG/p" "$TODOFILE" 2> /dev/null)
-        sed -i.bak -e "/$OPTARG/d" "$TODOFILE" 2> /dev/null && rm "$TODOFILE".bak
+        # Treat OPTARG as a literal string to avoid sed regex/escape pitfalls.
+        match=$(grep -F "$OPTARG" "$TODOFILE" 2> /dev/null)
         if [ -n "$match" ]; then
+          # Delete matched lines by number from bottom to top so indexes stay stable.
+          line_numbers=$(awk -v needle="$OPTARG" 'index($0, needle) { print NR }' "$TODOFILE" 2> /dev/null)
+          if [ -n "$line_numbers" ]; then
+            for line in $(printf "%s\n" "$line_numbers" | awk '{print $0}' | sort -rn); do
+              sed -i.bak -e "${line}d" "$TODOFILE" 2> /dev/null
+            done
+            rm -f "$TODOFILE".bak
+          fi
           printf "%s - %s\\n" "$(date +"%Y-%m-%d %H:%M:%S")" "$match" >> "$TODOARCHIVEFILE"
         fi
       fi
