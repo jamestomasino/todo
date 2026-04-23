@@ -47,10 +47,12 @@ DESCRIPTION
 
        -x     Use  archive  context.  With no additional action, todo -x shows
               the archive list. With other actions, operations  apply  to  the
-              archive file instead of the main todo file.
+              archive file instead of the main todo file.  Deleting in archive
+              context  (todo -xd ...)   removes items permanently and does not
+              archive them elsewhere.
 
        -j, --json
-              Display  list  output  as JSON. This applies to both the current
+              Display list output as JSON. This applies to  both  the  current
               todo list and archive view (-x).
 
        -e     Open the todo file in your editor.
@@ -90,11 +92,11 @@ EXAMPLES
               Shows the archive for the current todo list
 
 LICENSE
-       GNU General Public License v3.0  or  later  at  https://www.gnu.org/li‐
+       GNU  General  Public  License  v3.0 or later at https://www.gnu.org/li‐
        censes/gpl-3.0-standalone.html
 
 BUGS
-       Report  issues  at  the  git repository at https://github.com/jamestom‐
+       Report issues at the  git  repository  at  https://github.com/jamestom‐
        asino/todo
 
 AUTHOR
